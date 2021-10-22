@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use log::warn;
+use rand::{distributions::Alphanumeric, Rng};
 use serde::{de::DeserializeOwned, Serialize};
 use std::path::Path;
 use tokio::fs;
@@ -84,4 +85,12 @@ impl ToUtf8String for &[u8] {
     fn to_utf8_lossy(self) -> String {
         String::from_utf8_lossy(self).to_string()
     }
+}
+
+pub fn rand_string(count: usize) -> String {
+    rand::thread_rng()
+        .sample_iter(Alphanumeric)
+        .take(count)
+        .map(char::from)
+        .collect()
 }
