@@ -1,9 +1,13 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use log::warn;
 use rand::{distributions::Alphanumeric, Rng};
 use serde::{de::DeserializeOwned, Serialize};
-use std::path::Path;
-use tokio::fs;
+use std::{
+    future::Future,
+    path::Path,
+    sync::{mpsc, Arc, Condvar, Mutex},
+};
+use tokio::{fs, runtime::Runtime};
 
 #[macro_export]
 macro_rules! async_block {
@@ -93,4 +97,57 @@ pub fn rand_string(count: usize) -> String {
         .take(count)
         .map(char::from)
         .collect()
+}
+
+pub fn block_spawn<F, T>(f: F) -> Result<T>
+where
+    F: Future<Output = T> + Send + 'static,
+    T: Send + 'static,
+{
+    let t = std::thread::spawn(move || {
+        let cv1 = Arc::new((Mutex::new(false), Condvar::new()));
+        let cv2 = cv1.clone();
+        let runtime = Runtime::new().unwrap();
+        let (tx, rx) = mpsc::channel();
+        runtime.spawn(async move {
+            let output = f.await;
+            tx.send(output).unwrap();
+
+            let (lock, cv) = &*cv2;
+            let mut end = lock.lock().unwrap();
+            *end = true;
+            cv.notify_one();
+        });
+
+        let (lock, cv) = &*cv1;
+        let mut end = lock.lock().unwrap();
+        while !*end {
+            end = cv.wait(end).unwrap();
+        }
+
+        rx.recv().unwrap()
+    });
+
+    Ok(t.join().map_err(|e| anyhow!("{:?}", e))?)
+}
+
+#[cfg(test)]
+mod test {
+    use tokio::time::{sleep, Duration};
+    use crate::block_spawn;
+
+    #[test]
+    fn test_block_spawn() {
+        let r = block_spawn(async {
+            for i in 0..10 {
+                println!("task run {}", i);
+                sleep(Duration::from_millis(500)).await;
+            }
+
+            return "hello world".to_string();
+        })
+        .unwrap();
+
+        println!("task done: {}", r);
+    }
 }
