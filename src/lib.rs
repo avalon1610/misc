@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+pub use http::{HttpError, HttpResult};
 use log::warn;
 use rand::{distributions::Alphanumeric, Rng};
 use serde::{de::DeserializeOwned, Serialize};
@@ -8,6 +9,8 @@ use std::{
     sync::{mpsc, Arc, Condvar, Mutex},
 };
 use tokio::{fs, runtime::Runtime};
+
+mod http;
 
 #[macro_export]
 macro_rules! async_block {
@@ -133,8 +136,8 @@ where
 
 #[cfg(test)]
 mod test {
-    use tokio::time::{sleep, Duration};
     use crate::block_spawn;
+    use tokio::time::{sleep, Duration};
 
     #[test]
     fn test_block_spawn() {

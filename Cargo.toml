@@ -8,6 +8,7 @@ version = "0.1.0"
 [dependencies]
 anyhow = "1.0"
 async-trait = "0.1"
+axum = "0.3"
 env_logger = "0.9"
 log = "0.4"
 rand = "0.8"
