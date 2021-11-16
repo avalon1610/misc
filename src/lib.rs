@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Context, Result};
-pub use http::{HttpError, HttpResult};
+pub use http::{HttpContext, HttpError, HttpResult};
 use log::warn;
 use rand::{distributions::Alphanumeric, Rng};
 use serde::{de::DeserializeOwned, Serialize};
@@ -102,6 +102,7 @@ pub fn rand_string(count: usize) -> String {
         .collect()
 }
 
+#[allow(clippy::mutex_atomic)]
 pub fn block_spawn<F, T>(f: F) -> Result<T>
 where
     F: Future<Output = T> + Send + 'static,
@@ -131,7 +132,7 @@ where
         rx.recv().unwrap()
     });
 
-    Ok(t.join().map_err(|e| anyhow!("{:?}", e))?)
+    t.join().map_err(|e| anyhow!("{:?}", e))
 }
 
 #[cfg(test)]
