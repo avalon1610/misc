@@ -3,7 +3,10 @@ use axum::{
     http::{Response, StatusCode},
     response::IntoResponse,
 };
-use std::{convert::Infallible, fmt::Display};
+use std::{
+    convert::Infallible,
+    fmt::{Debug, Display},
+};
 
 #[derive(PartialEq, Debug)]
 pub struct HttpError {
@@ -22,8 +25,11 @@ impl IntoResponse for HttpError {
     }
 }
 
-impl<T: std::error::Error> From<T> for HttpError {
-    fn from(e: T) -> Self {
+impl<E> From<E> for HttpError
+where
+    E: Debug + Display + Sync + Send + 'static,
+{
+    fn from(e: E) -> Self {
         Self {
             message: format!("{:?}", e),
             status_code: StatusCode::INTERNAL_SERVER_ERROR,
@@ -72,7 +78,7 @@ pub trait HttpContext<T> {
 
 impl<T, E> HttpContext<T> for Result<T, E>
 where
-    E: std::fmt::Debug + Sync + Send + 'static,
+    E: Debug + Sync + Send + 'static,
 {
     fn http_context<C>(self, status_code: StatusCode, extra_msg: C) -> Result<T, HttpError>
     where
@@ -103,7 +109,7 @@ mod test {
     use axum::http::StatusCode;
 
     #[test]
-    fn test_macros() {
+    fn test_macros() -> Result<(), HttpError> {
         let error = HttpError {
             message: "aaa".to_string(),
             status_code: StatusCode::INTERNAL_SERVER_ERROR,
@@ -115,5 +121,11 @@ mod test {
         );
         assert_eq!(error, http_err!("aaa"));
         assert_eq!(error, http_err!("{}aa", "a"));
+        anyhow_error_test()?;
+        Ok(())
+    }
+
+    fn anyhow_error_test() -> anyhow::Result<()> {
+        Ok(())
     }
 }
