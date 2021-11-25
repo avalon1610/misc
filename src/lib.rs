@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+#[cfg(feature = "http")]
 pub use http::{HttpContext, HttpError, HttpResult};
 use log::warn;
 use rand::{distributions::Alphanumeric, Rng};
@@ -10,6 +11,7 @@ use std::{
 };
 use tokio::{fs, runtime::Runtime};
 
+#[cfg(feature = "http")]
 mod http;
 
 #[macro_export]
