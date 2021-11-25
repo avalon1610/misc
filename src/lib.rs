@@ -5,6 +5,7 @@ use log::warn;
 use rand::{distributions::Alphanumeric, Rng};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
+    borrow::Cow,
     future::Future,
     path::Path,
     sync::{mpsc, Arc, Condvar, Mutex},
@@ -87,12 +88,12 @@ pub fn init_env_logger(pkg_name: &str, debug: bool, default: &str) {
 }
 
 pub trait ToUtf8String {
-    fn to_utf8_lossy(self) -> String;
+    fn to_utf8_lossy(&self) -> Cow<'_, str>;
 }
 
 impl ToUtf8String for &[u8] {
-    fn to_utf8_lossy(self) -> String {
-        String::from_utf8_lossy(self).to_string()
+    fn to_utf8_lossy(&self) -> Cow<'_, str> {
+        String::from_utf8_lossy(self)
     }
 }
 
