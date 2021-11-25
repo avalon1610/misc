@@ -91,7 +91,7 @@ pub trait ToUtf8String {
     fn to_utf8_lossy(&self) -> Cow<'_, str>;
 }
 
-impl ToUtf8String for &[u8] {
+impl ToUtf8String for [u8] {
     fn to_utf8_lossy(&self) -> Cow<'_, str> {
         String::from_utf8_lossy(self)
     }
@@ -140,7 +140,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::block_spawn;
+    use crate::{ToUtf8String, block_spawn};
     use tokio::time::{sleep, Duration};
 
     #[test]
@@ -156,5 +156,12 @@ mod test {
         .unwrap();
 
         println!("task done: {}", r);
+    }
+
+    #[test]
+    fn test_to_utf8_lossy() {
+        let a = [31u8, 32u8, 33u8];
+        let b= a.to_utf8_lossy().to_string();
+        assert_eq!(a, b.as_bytes())
     }
 }
