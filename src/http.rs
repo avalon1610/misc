@@ -1,12 +1,5 @@
-use axum::{
-    body::{Bytes, Full},
-    http::{Response, StatusCode},
-    response::IntoResponse,
-};
-use std::{
-    convert::Infallible,
-    fmt::{Debug, Display},
-};
+use axum::{http::StatusCode, response::IntoResponse, response::Response};
+use std::fmt::{Debug, Display};
 
 #[derive(PartialEq, Debug)]
 pub struct HttpError {
@@ -15,10 +8,7 @@ pub struct HttpError {
 }
 
 impl IntoResponse for HttpError {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
+    fn into_response(self) -> Response {
         let mut response = self.message.into_response();
         *response.status_mut() = self.status_code;
         response
@@ -105,7 +95,7 @@ pub type HttpResult<T> = Result<T, HttpError>;
 
 #[cfg(test)]
 mod test {
-    use crate::HttpError;
+    use super::HttpError;
     use axum::http::StatusCode;
 
     #[test]

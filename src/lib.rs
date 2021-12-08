@@ -1,6 +1,4 @@
 use anyhow::{anyhow, Context, Result};
-#[cfg(feature = "http")]
-pub use http::{HttpContext, HttpError, HttpResult};
 use log::warn;
 use rand::{distributions::Alphanumeric, Rng};
 use serde::{de::DeserializeOwned, Serialize};
@@ -13,7 +11,7 @@ use std::{
 use tokio::{fs, runtime::Runtime};
 
 #[cfg(feature = "http")]
-mod http;
+pub mod http;
 
 #[macro_export]
 macro_rules! async_block {
@@ -140,7 +138,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{ToUtf8String, block_spawn};
+    use crate::{block_spawn, ToUtf8String};
     use tokio::time::{sleep, Duration};
 
     #[test]
@@ -160,8 +158,12 @@ mod test {
 
     #[test]
     fn test_to_utf8_lossy() {
-        let a = [31u8, 32u8, 33u8];
-        let b= a.to_utf8_lossy().to_string();
-        assert_eq!(a, b.as_bytes())
+        let a = [0x31u8, 0x32u8, 0x33u8];
+        let b = a[..2].to_utf8_lossy().to_string();
+        assert_eq!("12", b);
+
+        let c = vec![0x31u8, 0x32u8, 0x33u8];
+        let d = c.to_utf8_lossy().to_string();
+        assert_eq!("123", d);
     }
 }
