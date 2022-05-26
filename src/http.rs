@@ -30,29 +30,29 @@ where
 #[macro_export]
 macro_rules! http_err {
     ($status: path, $fmt: literal, $($args: tt)+) => {
-        crate::http::HttpError {
+        misc::http::HttpError {
             message: format!($fmt, $($args)+),
             status_code: $status
         }
     };
     ($status: path, $msg: literal) => {
-        crate::http::HttpError {
+        misc::http::HttpError {
             message: $msg.to_string(),
             status_code: $status
         }
     };
     ($fmt: literal, $($args: tt)+) => {
-        http_err!(StatusCode::INTERNAL_SERVER_ERROR, $fmt, $($args)+)
+        misc::http_err!(StatusCode::INTERNAL_SERVER_ERROR, $fmt, $($args)+)
     };
     ($msg: literal) => {
-        http_err!(StatusCode::INTERNAL_SERVER_ERROR, $msg)
+        misc::http_err!(StatusCode::INTERNAL_SERVER_ERROR, $msg)
     };
 }
 
 #[macro_export]
 macro_rules! http_bail {
     ($($args: tt)+) => {
-        return Err(http_err!($($args)+));
+        return Err(misc::http_err!($($args)+));
     };
 }
 
