@@ -30,13 +30,13 @@ where
 #[macro_export]
 macro_rules! http_err {
     ($status: path, $fmt: literal, $($args: tt)+) => {
-        HttpError {
+        crate::http::HttpError {
             message: format!($fmt, $($args)+),
             status_code: $status
         }
     };
     ($status: path, $msg: literal) => {
-        HttpError {
+        crate::http::HttpError {
             message: $msg.to_string(),
             status_code: $status
         }
