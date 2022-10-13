@@ -10,9 +10,6 @@ use std::{
 };
 use tokio::{fs, runtime::Runtime};
 
-#[cfg(feature = "http")]
-pub mod http;
-
 #[macro_export]
 macro_rules! async_block {
     ($block: block) => {
