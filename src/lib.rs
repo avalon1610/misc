@@ -1,14 +1,22 @@
+#[cfg(feature = "async")]
 use anyhow::{anyhow, Context, Result};
+#[cfg(feature = "async")]
 use log::warn;
 use rand::{distributions::Alphanumeric, Rng};
+#[cfg(feature = "async")]
 use serde::{de::DeserializeOwned, Serialize};
+use std::borrow::Cow;
+#[cfg(feature = "async")]
 use std::{
-    borrow::Cow,
     future::Future,
     path::Path,
     sync::{mpsc, Arc, Condvar, Mutex},
 };
+#[cfg(feature = "async")]
 use tokio::{fs, runtime::Runtime};
+
+#[cfg(feature = "nom_err")]
+pub mod nom;
 
 #[macro_export]
 macro_rules! async_block {
@@ -28,6 +36,7 @@ macro_rules! async_block {
     };
 }
 
+#[cfg(feature = "async")]
 #[async_trait::async_trait]
 pub trait ConfigManager
 where
@@ -65,6 +74,7 @@ where
     }
 }
 
+#[cfg(feature = "async")]
 impl<T> ConfigManager for T where T: Serialize + DeserializeOwned + Default + Send {}
 
 pub fn init_env_logger(pkg_name: &str, debug: bool, default: &str) {
@@ -100,6 +110,7 @@ pub fn rand_string(count: usize) -> String {
         .collect()
 }
 
+#[cfg(feature = "async")]
 #[allow(clippy::mutex_atomic)]
 pub fn block_spawn<F, T>(f: F) -> Result<T>
 where
