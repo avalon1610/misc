@@ -2,7 +2,7 @@ use anyhow::{bail, Result};
 use nom::{error::ErrorKind, Err};
 use std::fmt::Display;
 
-trait ParseError<T> {
+pub trait ParseError<T> {
     fn streaming_context<C>(self, c: C) -> Result<Option<T>>
     where
         C: Display + Send + Sync + 'static;
