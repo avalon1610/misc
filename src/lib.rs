@@ -30,7 +30,7 @@ macro_rules! async_block {
             }
             .await
             {
-                log::error!("{:?}", e);
+                error!("{:?}", e);
             }
         }
     };
