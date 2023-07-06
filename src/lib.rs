@@ -17,6 +17,8 @@ use tokio::{fs, runtime::Runtime};
 
 #[cfg(feature = "nom_err")]
 pub mod nom;
+#[cfg(feature = "panic_handler")]
+pub mod panic;
 
 #[macro_export]
 macro_rules! async_block {
