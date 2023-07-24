@@ -2,6 +2,7 @@
 use anyhow::{anyhow, Context, Result};
 #[cfg(feature = "async")]
 use log::warn;
+#[cfg(feature = "random")]
 use rand::{distributions::Alphanumeric, Rng};
 #[cfg(feature = "async")]
 use serde::{de::DeserializeOwned, Serialize};
@@ -14,11 +15,12 @@ use std::{
 };
 #[cfg(feature = "async")]
 use tokio::{fs, runtime::Runtime};
-
 #[cfg(feature = "nom_err")]
 pub mod nom;
 #[cfg(feature = "panic_handler")]
 pub mod panic;
+#[cfg(feature = "signals")]
+pub mod signals;
 
 #[macro_export]
 macro_rules! async_block {
@@ -79,6 +81,7 @@ where
 #[cfg(feature = "async")]
 impl<T> ConfigManager for T where T: Serialize + DeserializeOwned + Default + Send {}
 
+#[cfg(feature = "logger")]
 pub fn init_env_logger(pkg_name: &str, debug: bool, default: &str) {
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var(
@@ -104,6 +107,7 @@ impl ToUtf8String for [u8] {
     }
 }
 
+#[cfg(feature = "random")]
 pub fn rand_string(count: usize) -> String {
     rand::thread_rng()
         .sample_iter(Alphanumeric)
