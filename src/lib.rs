@@ -106,7 +106,7 @@ pub fn init_tracing_logger(
 ) -> tracing_appender::non_blocking::WorkerGuard {
     use tracing_subscriber::prelude::*;
 
-    let file_appender = tracing_appender::rolling::daily(log_dir, pkg_name);
+    let file_appender = tracing_appender::rolling::daily(log_dir, format!("{pkg_name}.log"));
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
     let log_level = if debug {
         format!("{}=debug,{}", pkg_name.replace('-', "_"), default)
