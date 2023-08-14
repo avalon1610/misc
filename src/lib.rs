@@ -97,6 +97,38 @@ pub fn init_env_logger(pkg_name: &str, debug: bool, default: &str) {
     env_logger::init();
 }
 
+#[cfg(feature = "tracing_logger")]
+pub fn init_tracing_logger(
+    log_dir: impl AsRef<Path>,
+    pkg_name: &str,
+    debug: bool,
+    default: &str,
+) -> tracing_appender::non_blocking::WorkerGuard {
+    use tracing_subscriber::prelude::*;
+
+    let file_appender = tracing_appender::rolling::daily(log_dir, pkg_name);
+    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+    let log_level = if debug {
+        format!("{}=debug,{}", pkg_name.replace('-', "_"), default)
+    } else {
+        default.to_owned()
+    };
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| log_level.into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_writer(non_blocking)
+                .with_ansi(false),
+        )
+        .init();
+
+    guard
+}
+
 pub trait ToUtf8String {
     fn to_utf8_lossy(&self) -> Cow<'_, str>;
 }
