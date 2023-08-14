@@ -12,7 +12,10 @@ backtrace = { version = "0.3.68", optional = true }
 chrono = { version = "0.4.26", optional = true }
 env_logger = { version = "0.9", optional = true }
 futures = { version = "0.3.28", optional = true }
-lettre = { version = "0.10.4", optional = true }
+lettre = { version = "0.10.4", optional = true, default-features = false, features = [
+    "smtp-transport",
+    "builder",
+] }
 log = { version = "0.4", optional = true }
 nom = { version = "7.1.1", optional = true }
 rand = { version = "0.8", optional = true }
@@ -24,7 +27,9 @@ signal-hook-tokio = { version = "0.3", optional = true, features = [
 ] }
 tokio = { version = "1", features = ["full"], optional = true }
 tracing-appender = { version = "0.2.2", optional = true }
-tracing-subscriber = { version = "0.3.17", optional = true, features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.17", optional = true, features = [
+    "env-filter",
+] }
 
 [features]
 async = ["tokio", "async-trait", "serde_json", "serde", "log", "anyhow"]
