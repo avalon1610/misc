@@ -7,7 +7,7 @@ use std::{
     env::{current_exe, var},
     ffi::OsStr,
     fs,
-    panic::set_hook,
+    panic::{set_hook, Location},
     path::PathBuf,
     process::{exit, Command},
 };
@@ -86,8 +86,8 @@ impl PanicHandler {
                 "{:?}\nthread '{}' panicked at '{}' {}",
                 bt,
                 std::thread::current().name().unwrap_or("<unnamed>"),
-                panic_info.payload().downcast_ref::<&str>().unwrap(),
-                panic_info.location().unwrap()
+                panic_info.payload().downcast_ref::<&str>().unwrap_or(&"<unknown>"),
+                panic_info.location().unwrap_or(Location::caller())
             );
 
             println!("{dump}");
