@@ -86,16 +86,12 @@ impl PanicHandler {
                 "{:?}\nthread '{}' panicked at '{}' {}",
                 bt,
                 std::thread::current().name().unwrap_or("<unnamed>"),
-                panic_info.payload().downcast_ref::<&str>().unwrap_or(&"<unknown>"),
+                panic_info
+                    .payload()
+                    .downcast_ref::<&str>()
+                    .unwrap_or(&"<unknown>"),
                 panic_info.location().unwrap_or(Location::caller())
             );
-
-            println!("{dump}");
-            if let Some(mail) = self.mail.as_ref() {
-                if let Err(e) = mail.send_mail(format!("{} is PANIC!!", self.exe), &dump) {
-                    error!("send panic report mail error: {:?}", e);
-                }
-            }
 
             let dump_file = format!(
                 "{}_{}.dump",
@@ -105,6 +101,12 @@ impl PanicHandler {
 
             if let Err(e) = fs::write(dump_file, dump.as_bytes()) {
                 error!("write panic report file error: {:?}", e);
+            }
+
+            if let Some(mail) = self.mail.as_ref() {
+                if let Err(e) = mail.send_mail(format!("{} is PANIC!!", self.exe), &dump) {
+                    error!("send panic report mail error: {:?}", e);
+                }
             }
 
             if self.restart {
