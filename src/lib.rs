@@ -103,10 +103,15 @@ pub fn init_tracing_logger(
     pkg_name: &str,
     debug: bool,
     default: &str,
-) -> tracing_appender::non_blocking::WorkerGuard {
+) -> Result<tracing_appender::non_blocking::WorkerGuard> {
+    use tracing_appender::rolling::{RollingFileAppender, Rotation};
     use tracing_subscriber::{fmt::time::OffsetTime, prelude::*};
 
-    let file_appender = tracing_appender::rolling::daily(log_dir, format!("{pkg_name}.log"));
+    let file_appender = RollingFileAppender::builder()
+        .rotation(Rotation::DAILY)
+        .filename_prefix(pkg_name)
+        .filename_suffix("log")
+        .build(log_dir)?;
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
     let log_level = if debug {
         format!("{}=debug,{}", pkg_name.replace('-', "_"), default)
@@ -116,9 +121,7 @@ pub fn init_tracing_logger(
 
     let timer = OffsetTime::new(
         time::macros::offset!(+8),
-        time::macros::format_description!(
-            "[year]-[month]-[day]T[hour]:[minute]:[second]"
-        ),
+        time::macros::format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]"),
     );
     tracing_subscriber::registry()
         .with(
@@ -134,7 +137,7 @@ pub fn init_tracing_logger(
         )
         .init();
 
-    guard
+    Ok(guard)
 }
 
 pub trait ToUtf8String {
