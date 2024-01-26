@@ -1,5 +1,7 @@
 #[cfg(any(feature = "async", feature = "tracing_logger"))]
-use anyhow::{anyhow, Context, Result};
+use anyhow::Result;
+#[cfg(feature = "async")]
+use anyhow::{anyhow, Context};
 #[cfg(feature = "async")]
 use log::warn;
 #[cfg(feature = "random")]

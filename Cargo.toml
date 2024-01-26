@@ -38,7 +38,7 @@ async = ["tokio", "async-trait", "serde_json", "serde", "log", "anyhow"]
 nom_err = ["nom", "anyhow"]
 panic_handler = ["lettre", "backtrace", "chrono", "log", "anyhow"]
 logger = ["env_logger"]
-tracing_logger = ["tracing-subscriber", "tracing-appender"]
+tracing_logger = ["tracing-subscriber", "tracing-appender", "anyhow"]
 random = ["rand"]
 signals = [
     "tokio",
