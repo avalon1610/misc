@@ -1,4 +1,4 @@
-#[cfg(feature = "async")]
+#[cfg(any(feature = "async", feature = "tracing_logger"))]
 use anyhow::{anyhow, Context, Result};
 #[cfg(feature = "async")]
 use log::warn;
@@ -103,7 +103,7 @@ pub fn init_tracing_logger(
     pkg_name: &str,
     debug: bool,
     default: &str,
-) -> Result<tracing_appender::non_blocking::WorkerGuard, Box<dyn std::error::Error>> {
+) -> Result<tracing_appender::non_blocking::WorkerGuard> {
     use tracing_appender::rolling::{RollingFileAppender, Rotation};
     use tracing_subscriber::{fmt::time::OffsetTime, prelude::*};
 
