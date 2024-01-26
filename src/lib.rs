@@ -99,11 +99,11 @@ pub fn init_env_logger(pkg_name: &str, debug: bool, default: &str) {
 
 #[cfg(feature = "tracing_logger")]
 pub fn init_tracing_logger(
-    log_dir: impl AsRef<Path>,
+    log_dir: impl AsRef<std::path::Path>,
     pkg_name: &str,
     debug: bool,
     default: &str,
-) -> Result<tracing_appender::non_blocking::WorkerGuard> {
+) -> Result<tracing_appender::non_blocking::WorkerGuard, Box<dyn std::error::Error>> {
     use tracing_appender::rolling::{RollingFileAppender, Rotation};
     use tracing_subscriber::{fmt::time::OffsetTime, prelude::*};
 
