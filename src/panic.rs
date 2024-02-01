@@ -29,7 +29,7 @@ impl Mail {
     fn new() -> Self {
         let server = var("PANIC_MAIL_SRV").unwrap_or("mail.dahuatech.com".to_owned());
         let account = var("PANIC_MAIL_ACCOUNT").unwrap_or("qdrj_noreply@dahuatech.com".to_owned());
-        let password = var("PANIC_MAIL_PASS").unwrap_or("Selina12#$%^".to_string());
+        let password = var("PANIC_MAIL_PASS").unwrap_or("Selina12#".to_string());
         let sender = SmtpTransport::builder_dangerous(server)
             .credentials(Credentials::new(account.clone(), password))
             .build();
