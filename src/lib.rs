@@ -42,7 +42,12 @@ macro_rules! async_block {
     };
 }
 
-#[cfg(feature = "async")]
+#[cfg(all(feature = "config_json", feature = "config_toml"))]
+compile_error!(
+    "feature \"config_json\" and feature \"config_toml\" cannot be enabled at the same time"
+);
+
+#[cfg(any(feature = "config_json", feature = "config_toml"))]
 #[async_trait::async_trait]
 pub trait ConfigManager
 where
@@ -52,7 +57,8 @@ where
         let cfg = fs::read(file.as_ref())
             .await
             .context("ConfigManager::load read file failed")?;
-        Ok(serde_json::from_slice(&*cfg).context("ConfigManager::load deserialize failed")?)
+
+        deserialize(cfg)
     }
 
     async fn load_or_default(file: impl AsRef<Path> + Send + Sync + 'async_trait) -> Self {
@@ -73,11 +79,31 @@ where
         &self,
         file: impl AsRef<Path> + Send + Sync + 'async_trait,
     ) -> anyhow::Result<()> {
-        let cfg = serde_json::to_string_pretty(self)?;
+        let cfg = serialize(self)?;
         fs::write(file.as_ref(), cfg.as_bytes()).await?;
 
         Ok(())
     }
+}
+
+#[cfg(feature = "config_json")]
+fn deserialize<T: DeserializeOwned>(cfg: Vec<u8>) -> Result<T> {
+    serde_json::from_slice(&cfg).context("ConfigManager::load deserialize failed")
+}
+
+#[cfg(feature = "config_json")]
+fn serialize<T: Serialize>(v: &T) -> Result<String> {
+    Ok(serde_json::to_string_pretty(v)?)
+}
+
+#[cfg(feature = "config_toml")]
+fn deserialize<T: DeserializeOwned>(cfg: Vec<u8>) -> Result<T> {
+    toml::from_str(&String::from_utf8_lossy(&cfg)).context("ConfigManager::load deserialize failed")
+}
+
+#[cfg(feature = "config_toml")]
+fn serialize<T: Serialize>(v: &T) -> Result<String> {
+    Ok(toml::to_string_pretty(v)?)
 }
 
 #[cfg(feature = "async")]
