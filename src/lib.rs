@@ -17,6 +17,7 @@ use std::{
 };
 #[cfg(feature = "async")]
 use tokio::{fs, runtime::Runtime};
+use tracing_subscriber::fmt::format::FmtSpan;
 #[cfg(feature = "nom_err")]
 pub mod nom;
 #[cfg(feature = "panic_handler")]
@@ -222,12 +223,17 @@ impl TracingLogger {
         (
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| log_level.into())
-                .and_then(tracing_subscriber::fmt::layer().with_timer(timer.clone()))
+                .and_then(
+                    tracing_subscriber::fmt::layer()
+                        .with_timer(timer.clone())
+                        .with_span_events(FmtSpan::NEW),
+                )
                 .and_then(
                     tracing_subscriber::fmt::layer()
                         .with_timer(timer)
                         .with_writer(non_blocking)
-                        .with_ansi(false),
+                        .with_ansi(false)
+                        .with_span_events(FmtSpan::NEW),
                 ),
             guard,
         )
