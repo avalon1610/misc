@@ -1,23 +1,17 @@
+#[cfg(feature = "async")]
+use anyhow::anyhow;
 #[cfg(any(feature = "async", feature = "tracing_logger"))]
 use anyhow::Result;
-#[cfg(feature = "async")]
-use anyhow::{anyhow, Context};
-#[cfg(feature = "async")]
-use log::warn;
-#[cfg(feature = "random")]
-use rand::{distributions::Alphanumeric, Rng};
-#[cfg(feature = "async")]
-use serde::{de::DeserializeOwned, Serialize};
 use std::borrow::Cow;
 #[cfg(feature = "async")]
 use std::{
     future::Future,
-    path::Path,
     sync::{mpsc, Arc, Condvar, Mutex},
 };
 #[cfg(feature = "async")]
-use tokio::{fs, runtime::Runtime};
-use tracing_subscriber::fmt::format::FmtSpan;
+use tokio::runtime::Runtime;
+#[cfg(any(feature = "config_toml", feature = "config_json"))]
+pub mod config;
 #[cfg(feature = "nom_err")]
 pub mod nom;
 #[cfg(feature = "panic_handler")]
@@ -42,73 +36,6 @@ macro_rules! async_block {
         }
     };
 }
-
-#[cfg(all(feature = "config_json", feature = "config_toml"))]
-compile_error!(
-    "feature \"config_json\" and feature \"config_toml\" cannot be enabled at the same time"
-);
-
-#[cfg(any(feature = "config_json", feature = "config_toml"))]
-#[async_trait::async_trait]
-pub trait ConfigManager
-where
-    Self: Default + DeserializeOwned + Serialize,
-{
-    async fn load(file: impl AsRef<Path> + Send + Sync + 'async_trait) -> Result<Self> {
-        let cfg = fs::read(file.as_ref())
-            .await
-            .context("ConfigManager::load read file failed")?;
-
-        deserialize(cfg)
-    }
-
-    async fn load_or_default(file: impl AsRef<Path> + Send + Sync + 'async_trait) -> Self {
-        match Self::load(file).await {
-            Ok(c) => c,
-            Err(e) => {
-                warn!(
-                    "load failed: {:?}.\nusing default of [{}]",
-                    e,
-                    std::any::type_name::<Self>(),
-                );
-                Self::default()
-            }
-        }
-    }
-
-    async fn save(
-        &self,
-        file: impl AsRef<Path> + Send + Sync + 'async_trait,
-    ) -> anyhow::Result<()> {
-        let cfg = serialize(self)?;
-        fs::write(file.as_ref(), cfg.as_bytes()).await?;
-
-        Ok(())
-    }
-}
-
-#[cfg(feature = "config_json")]
-fn deserialize<T: DeserializeOwned>(cfg: Vec<u8>) -> Result<T> {
-    serde_json::from_slice(&cfg).context("ConfigManager::load deserialize failed")
-}
-
-#[cfg(feature = "config_json")]
-fn serialize<T: Serialize>(v: &T) -> Result<String> {
-    Ok(serde_json::to_string_pretty(v)?)
-}
-
-#[cfg(feature = "config_toml")]
-fn deserialize<T: DeserializeOwned>(cfg: Vec<u8>) -> Result<T> {
-    toml::from_str(&String::from_utf8_lossy(&cfg)).context("ConfigManager::load deserialize failed")
-}
-
-#[cfg(feature = "config_toml")]
-fn serialize<T: Serialize>(v: &T) -> Result<String> {
-    Ok(toml::to_string_pretty(v)?)
-}
-
-#[cfg(any(feature = "config_json", feature = "config_toml"))]
-impl<T> ConfigManager for T where T: Serialize + DeserializeOwned + Default + Send {}
 
 #[cfg(feature = "logger")]
 pub fn init_env_logger(pkg_name: &str, debug: bool, default: &str) {
@@ -219,6 +146,7 @@ impl TracingLogger {
             time::macros::format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]"),
         );
 
+        use tracing_subscriber::fmt::format::FmtSpan;
         use tracing_subscriber::Layer;
         (
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -252,8 +180,7 @@ impl ToUtf8String for [u8] {
 
 #[cfg(feature = "random")]
 pub fn rand_string(count: usize) -> String {
-    rand::thread_rng()
-        .sample_iter(Alphanumeric)
+    rand::Rng::sample_iter(rand::thread_rng(), rand::distributions::Alphanumeric)
         .take(count)
         .map(char::from)
         .collect()
