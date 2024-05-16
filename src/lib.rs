@@ -10,7 +10,11 @@ use std::{
 };
 #[cfg(feature = "async")]
 use tokio::runtime::Runtime;
-#[cfg(any(feature = "config_toml", feature = "config_json"))]
+#[cfg(any(
+    feature = "config_json",
+    feature = "config_toml",
+    feature = "config_bin"
+))]
 pub mod config;
 #[cfg(feature = "nom_err")]
 pub mod nom;

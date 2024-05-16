@@ -1,28 +1,37 @@
 #![allow(async_fn_in_trait)]
-
-use anyhow::Context;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use log::warn;
 use serde::{de::DeserializeOwned, Serialize};
 use std::path::Path;
 
-#[cfg(all(feature = "config_json", feature = "config_toml"))]
-compile_error!(
-    "feature \"config_json\" and feature \"config_toml\" cannot be enabled at the same time"
-);
+#[cfg(any(
+    feature = "config_json",
+    feature = "config_toml",
+    feature = "config_bin"
+))]
+pub trait ConfigType<T: Serialize + DeserializeOwned> {
+    fn serialize(v: &T) -> Result<Vec<u8>>;
+    fn deserialize(cfg: Vec<u8>) -> Result<T>;
+}
 
-#[cfg(any(feature = "config_json", feature = "config_toml"))]
+#[cfg(any(
+    feature = "config_json",
+    feature = "config_toml",
+    feature = "config_bin"
+))]
 pub trait ConfigManager
 where
     Self: Default + DeserializeOwned + Serialize,
 {
+    type ImplType: ConfigType<Self>;
+
     #[cfg(feature = "async")]
     async fn load(file: impl AsRef<Path> + Send + Sync) -> Result<Self> {
         let cfg = tokio::fs::read(file.as_ref())
             .await
             .context("ConfigManager::load read file failed")?;
 
-        deserialize(cfg)
+        Self::ImplType::deserialize(cfg)
     }
 
     #[cfg(feature = "async")]
@@ -42,8 +51,8 @@ where
 
     #[cfg(feature = "async")]
     async fn save(&self, file: impl AsRef<Path> + Send + Sync) -> anyhow::Result<()> {
-        let cfg = serialize(self)?;
-        tokio::fs::write(file.as_ref(), cfg.as_bytes()).await?;
+        let cfg = Self::ImplType::serialize(self)?;
+        tokio::fs::write(file.as_ref(), cfg).await?;
 
         Ok(())
     }
@@ -51,7 +60,7 @@ where
     fn load_sync(file: impl AsRef<Path> + Send + Sync) -> Result<Self> {
         let cfg = std::fs::read(file.as_ref()).context("ConfigManager::load read file failed")?;
 
-        deserialize(cfg)
+        Self::ImplType::deserialize(cfg)
     }
 
     fn load_or_default_sync(file: impl AsRef<Path> + Send + Sync) -> Self {
@@ -69,32 +78,61 @@ where
     }
 
     fn save_sync(&self, file: impl AsRef<Path> + Send + Sync) -> anyhow::Result<()> {
-        let cfg = serialize(self)?;
-        std::fs::write(file.as_ref(), cfg.as_bytes())?;
+        let cfg = Self::ImplType::serialize(self)?;
+        std::fs::write(file.as_ref(), cfg)?;
 
         Ok(())
     }
 }
 
-#[cfg(feature = "config_json")]
-fn deserialize<T: DeserializeOwned>(cfg: Vec<u8>) -> Result<T> {
-    serde_json::from_slice(&cfg).context("ConfigManager::load deserialize failed")
-}
-
-#[cfg(feature = "config_json")]
-fn serialize<T: Serialize>(v: &T) -> Result<String> {
-    Ok(serde_json::to_string_pretty(v)?)
-}
+#[cfg(feature = "config_toml")]
+pub struct ConfigToml;
 
 #[cfg(feature = "config_toml")]
-fn deserialize<T: DeserializeOwned>(cfg: Vec<u8>) -> Result<T> {
-    toml::from_str(&String::from_utf8_lossy(&cfg)).context("ConfigManager::load deserialize failed")
+impl<T> ConfigType<T> for ConfigToml
+where
+    T: Serialize + DeserializeOwned,
+{
+    fn deserialize(cfg: Vec<u8>) -> Result<T> {
+        toml::from_str(&String::from_utf8_lossy(&cfg))
+            .context("ConfigManager::load deserialize failed")
+    }
+
+    fn serialize(v: &T) -> Result<Vec<u8>> {
+        Ok(toml::to_string_pretty(v).map(String::into_bytes)?)
+    }
 }
 
-#[cfg(feature = "config_toml")]
-fn serialize<T: Serialize>(v: &T) -> Result<String> {
-    Ok(toml::to_string_pretty(v)?)
+#[cfg(feature = "config_json")]
+pub struct ConfigJson;
+
+#[cfg(feature = "config_json")]
+impl<T> ConfigType<T> for ConfigJson
+where
+    T: Serialize + DeserializeOwned,
+{
+    fn deserialize(cfg: Vec<u8>) -> Result<T> {
+        serde_json::from_slice(&cfg).context("ConfigManager::load deserialize failed")
+    }
+
+    fn serialize(v: &T) -> Result<Vec<u8>> {
+        Ok(serde_json::to_string_pretty(v).map(String::into_bytes)?)
+    }
 }
 
-#[cfg(any(feature = "config_json", feature = "config_toml"))]
-impl<T> ConfigManager for T where T: Serialize + DeserializeOwned + Default + Send {}
+#[cfg(feature = "config_bin")]
+pub struct ConfigBin;
+
+#[cfg(feature = "config_bin")]
+impl<T> ConfigType<T> for ConfigBin
+where
+    T: Serialize + DeserializeOwned,
+{
+    fn serialize(v: &T) -> Result<Vec<u8>> {
+        Ok(bincode::serialize(v)?)
+    }
+
+    fn deserialize(cfg: Vec<u8>) -> Result<T> {
+        Ok(bincode::deserialize(&cfg)?)
+    }
+}

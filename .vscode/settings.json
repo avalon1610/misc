@@ -1,12 +1,3 @@
 {
-    "rust-analyzer.cargo.features": [
-        "nom_err",
-        "panic_handler",
-        "logger",
-        "tracing_logger",
-        "random",
-        "signals",
-        "config_toml",
-        "async"
-    ]
+    "rust-analyzer.cargo.features": "all"
 }

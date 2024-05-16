@@ -64,6 +64,12 @@ impl Mail {
     }
 }
 
+impl Default for PanicHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PanicHandler {
     pub fn new() -> Self {
         let exe = current_exe().unwrap_or(PathBuf::from("<unknown>"));
