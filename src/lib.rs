@@ -16,6 +16,10 @@ use tokio::runtime::Runtime;
     feature = "config_bin"
 ))]
 pub mod config;
+#[cfg(feature = "tracing_logger")]
+mod logger;
+#[cfg(feature = "tracing_logger")]
+pub use logger::TracingLogger;
 #[cfg(feature = "nom_err")]
 pub mod nom;
 #[cfg(feature = "panic_handler")]
@@ -42,134 +46,14 @@ macro_rules! async_block {
 }
 
 #[cfg(feature = "logger")]
-pub fn init_env_logger(pkg_name: &str, debug: bool, default: &str) {
+pub fn init_env_logger(pkg_name: &str, verbose: &str, default: &str) {
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var(
             "RUST_LOG",
-            format!(
-                "{}={},{}",
-                pkg_name.replace('-', "_"),
-                if debug { "debug" } else { default },
-                default
-            ),
+            format!("{}={},{}", pkg_name.replace('-', "_"), verbose, default),
         );
     }
     env_logger::init();
-}
-
-#[cfg(feature = "tracing_logger")]
-pub enum TracingLogger {
-    Normal {
-        file_appender: tracing_appender::rolling::RollingFileAppender,
-        log_level: String,
-    },
-    Boxed {
-        layers: Box<dyn tracing_subscriber::Layer<tracing_subscriber::Registry> + Send + Sync>,
-        guard: tracing_appender::non_blocking::WorkerGuard,
-    },
-}
-
-#[cfg(feature = "tracing_logger")]
-impl TracingLogger {
-    pub fn new(
-        log_dir: impl AsRef<std::path::Path>,
-        pkg_name: &str,
-        debug: bool,
-        default: &str,
-    ) -> Result<Self> {
-        let file_appender = tracing_appender::rolling::RollingFileAppender::builder()
-            .rotation(tracing_appender::rolling::Rotation::DAILY)
-            .filename_prefix(pkg_name)
-            .filename_suffix("log")
-            .build(log_dir)?;
-        let log_level = if debug {
-            format!("{}=debug,{}", pkg_name.replace('-', "_"), default)
-        } else {
-            default.to_owned()
-        };
-
-        Ok(Self::Normal {
-            file_appender,
-            log_level,
-        })
-    }
-
-    pub fn add_layer<L>(self, layer: L) -> Self
-    where
-        L: tracing_subscriber::Layer<tracing_subscriber::Registry> + Send + Sync,
-    {
-        use tracing_subscriber::Layer;
-
-        match self {
-            Self::Boxed { layers, guard } => {
-                let layers = layers.and_then(layer).boxed();
-                Self::Boxed { layers, guard }
-            }
-            Self::Normal {
-                file_appender,
-                log_level,
-            } => {
-                let (layers, guard) = Self::default_layers(file_appender, log_level);
-                let layers = layers.and_then(layer).boxed();
-                Self::Boxed { layers, guard }
-            }
-        }
-    }
-
-    pub fn init(self) -> Result<tracing_appender::non_blocking::WorkerGuard> {
-        use tracing_subscriber::layer::SubscriberExt;
-        use tracing_subscriber::util::SubscriberInitExt;
-
-        let registey = tracing_subscriber::registry();
-        match self {
-            Self::Boxed { layers, guard } => {
-                registey.with(layers).init();
-                Ok(guard)
-            }
-            Self::Normal {
-                file_appender,
-                log_level,
-            } => {
-                let (layers, guard) = Self::default_layers(file_appender, log_level);
-                registey.with(layers).init();
-                Ok(guard)
-            }
-        }
-    }
-
-    fn default_layers(
-        file_appender: tracing_appender::rolling::RollingFileAppender,
-        log_level: String,
-    ) -> (
-        impl tracing_subscriber::Layer<tracing_subscriber::Registry> + Send + Sync,
-        tracing_appender::non_blocking::WorkerGuard,
-    ) {
-        let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
-        let timer = tracing_subscriber::fmt::time::OffsetTime::new(
-            time::macros::offset!(+8),
-            time::macros::format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]"),
-        );
-
-        use tracing_subscriber::fmt::format::FmtSpan;
-        use tracing_subscriber::Layer;
-        (
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| log_level.into())
-                .and_then(
-                    tracing_subscriber::fmt::layer()
-                        .with_timer(timer.clone())
-                        .with_span_events(FmtSpan::NEW),
-                )
-                .and_then(
-                    tracing_subscriber::fmt::layer()
-                        .with_timer(timer)
-                        .with_writer(non_blocking)
-                        .with_ansi(false)
-                        .with_span_events(FmtSpan::NEW),
-                ),
-            guard,
-        )
-    }
 }
 
 pub trait ToUtf8String {
