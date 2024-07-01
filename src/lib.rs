@@ -108,6 +108,34 @@ where
     t.join().map_err(|e| anyhow!("{:?}", e))
 }
 
+#[cfg(feature = "async")]
+pub async fn loop_task<P, F>(
+    name: &'static str,
+    proc: P,
+    interval: u64,
+    notify: Arc<tokio::sync::Notify>,
+) -> impl Future
+where
+    P: Fn() -> F,
+    F: Future,
+{
+    async move {
+        let task = async move {
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(interval)).await;
+                proc().await;
+            }
+        };
+
+        tokio::select! {
+            _ = task => {}
+            _ = notify.notified() => {
+                log::debug!("loop task {} notified and exited", name);
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::{block_spawn, ToUtf8String};
