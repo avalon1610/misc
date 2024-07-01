@@ -39,6 +39,6 @@ where
         log::info!("recv signal {}, exiting", signal);
 
         proc().await;
-        notify.notify_one();
+        notify.notify_waiters();
     }
 }
