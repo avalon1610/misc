@@ -1,5 +1,4 @@
 use anyhow::Result;
-use std::net::Ipv4Addr;
 use time::macros::{format_description, offset};
 use tracing_appender::{
     non_blocking,
@@ -16,6 +15,7 @@ use tracing_subscriber::{
 #[cfg(feature = "tracing_logger")]
 pub struct TracingLogger {
     layers: Box<dyn Layer<Registry> + Send + Sync>,
+    #[allow(dead_code)]
     console: bool,
     guard: non_blocking::WorkerGuard,
 }
@@ -65,7 +65,7 @@ impl TracingLogger {
             layered
                 .with(
                     console_subscriber::Builder::default()
-                        .server_addr((Ipv4Addr::UNSPECIFIED, 6669))
+                        .server_addr((std::net::Ipv4Addr::UNSPECIFIED, 6669))
                         .spawn(),
                 )
                 .init();

@@ -1,7 +1,5 @@
 #[cfg(feature = "async")]
 use anyhow::anyhow;
-#[cfg(any(feature = "async", feature = "tracing_logger"))]
-use anyhow::Result;
 use std::borrow::Cow;
 #[cfg(feature = "async")]
 use std::{
@@ -76,7 +74,7 @@ pub fn rand_string(count: usize) -> String {
 
 #[cfg(feature = "async")]
 #[allow(clippy::mutex_atomic)]
-pub fn block_spawn<F, T>(f: F) -> Result<T>
+pub fn block_spawn<F, T>(f: F) -> anyhow::Result<T>
 where
     F: Future<Output = T> + Send + 'static,
     T: Send + 'static,
@@ -122,7 +120,9 @@ where
     async move {
         let task = async move {
             loop {
-                tokio::time::sleep(std::time::Duration::from_secs(interval)).await;
+                if interval > 0 {
+                    tokio::time::sleep(std::time::Duration::from_secs(interval)).await;
+                }
                 proc().await;
             }
         };
