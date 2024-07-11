@@ -150,6 +150,7 @@ where
     }
 }
 
+#[cfg(feature = "sink")]
 impl<T> IntoAsyncWrite for T where T: futures::Sink<bytes::Bytes> + Sized {}
 
 #[cfg(test)]
