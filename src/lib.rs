@@ -136,6 +136,22 @@ where
     }
 }
 
+#[cfg(feature = "sink")]
+pub trait IntoAsyncWrite
+where
+    Self: futures::Sink<bytes::Bytes> + Sized,
+{
+    fn into_async_write(self) -> impl tokio::io::AsyncWrite {
+        use futures::SinkExt;
+
+        tokio_util::io::SinkWriter::new(tokio_util::io::CopyToBytes::new(
+            self.sink_map_err(|_| std::io::Error::from(std::io::ErrorKind::BrokenPipe)),
+        ))
+    }
+}
+
+impl<T> IntoAsyncWrite for T where T: futures::Sink<bytes::Bytes> + Sized {}
+
 #[cfg(test)]
 mod test {
     use crate::{block_spawn, ToUtf8String};
