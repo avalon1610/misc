@@ -1,13 +1,6 @@
-#[cfg(feature = "async")]
-use anyhow::anyhow;
 use std::borrow::Cow;
 #[cfg(feature = "async")]
-use std::{
-    future::Future,
-    sync::{mpsc, Arc, Condvar, Mutex},
-};
-#[cfg(feature = "async")]
-use tokio::runtime::Runtime;
+use std::{future::Future, sync::Arc};
 #[cfg(any(
     feature = "config_json",
     feature = "config_toml",
@@ -73,57 +66,26 @@ pub fn rand_string(count: usize) -> String {
 }
 
 #[cfg(feature = "async")]
-#[allow(clippy::mutex_atomic)]
-pub fn block_spawn<F, T>(f: F) -> anyhow::Result<T>
-where
-    F: Future<Output = T> + Send + 'static,
-    T: Send + 'static,
-{
-    let t = std::thread::spawn(move || {
-        let cv1 = Arc::new((Mutex::new(false), Condvar::new()));
-        let cv2 = cv1.clone();
-        let runtime = Runtime::new().unwrap();
-        let (tx, rx) = mpsc::channel();
-        runtime.spawn(async move {
-            let output = f.await;
-            tx.send(output).unwrap();
-
-            let (lock, cv) = &*cv2;
-            let mut end = lock.lock().unwrap();
-            *end = true;
-            cv.notify_one();
-        });
-
-        let (lock, cv) = &*cv1;
-        let mut end = lock.lock().unwrap();
-        while !*end {
-            end = cv.wait(end).unwrap();
-        }
-
-        rx.recv().unwrap()
-    });
-
-    t.join().map_err(|e| anyhow!("{:?}", e))
-}
-
-#[cfg(feature = "async")]
-pub async fn loop_task<P, F>(
+pub fn spawn_look_task<P, F>(
     name: &'static str,
     proc: P,
     interval: u64,
     notify: Arc<tokio::sync::Notify>,
-) -> impl Future
-where
-    P: Fn() -> F,
-    F: Future,
+) where
+    P: Fn() -> F + Send + 'static,
+    F: Future<Output = ()> + Send + 'static,
 {
-    async move {
+    tokio::spawn(async move {
         let task = async move {
             loop {
+                proc().await;
                 if interval > 0 {
                     tokio::time::sleep(std::time::Duration::from_secs(interval)).await;
                 }
-                proc().await;
+
+                if interval == 0 {
+                    break;
+                }
             }
         };
 
@@ -133,7 +95,7 @@ where
                 log::debug!("loop task {} notified and exited", name);
             }
         }
-    }
+    });
 }
 
 #[cfg(feature = "sink")]
@@ -155,22 +117,28 @@ impl<T> IntoAsyncWrite for T where T: futures::Sink<bytes::Bytes> + Sized {}
 
 #[cfg(test)]
 mod test {
-    use crate::{block_spawn, ToUtf8String};
+    use crate::ToUtf8String;
     use tokio::time::{sleep, Duration};
 
-    #[test]
-    fn test_block_spawn() {
-        let r = block_spawn(async {
-            for i in 0..10 {
-                println!("task run {}", i);
-                sleep(Duration::from_millis(500)).await;
-            }
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn test_spawn_loop_task() {
+        std::env::set_var("RUST_LOG", "info");
+        env_logger::init();
 
-            return "hello world".to_string();
-        })
-        .unwrap();
+        let notify = std::sync::Arc::new(tokio::sync::Notify::new());
+        crate::spawn_look_task(
+            "test",
+            || async {
+                log::info!("loop task run");
+            },
+            1,
+            notify.clone(),
+        );
 
-        println!("task done: {}", r);
+        sleep(Duration::from_secs(5)).await;
+        notify.notify_one();
+        sleep(Duration::from_secs(1)).await;
     }
 
     #[test]
