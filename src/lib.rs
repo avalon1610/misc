@@ -66,7 +66,7 @@ pub fn rand_string(count: usize) -> String {
 }
 
 #[cfg(feature = "async")]
-pub fn spawn_look_task<P, F>(
+pub fn spawn_loop_task<P, F>(
     name: &'static str,
     proc: P,
     interval: u64,
@@ -127,7 +127,7 @@ mod test {
         env_logger::init();
 
         let notify = std::sync::Arc::new(tokio::sync::Notify::new());
-        crate::spawn_look_task(
+        crate::spawn_loop_task(
             "test",
             || async {
                 log::info!("loop task run");
