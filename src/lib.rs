@@ -75,7 +75,21 @@ pub fn spawn_loop_task<P, F>(
     P: Fn() -> F + Send + 'static,
     F: Future<Output = ()> + Send + 'static,
 {
-    tokio::spawn(async move {
+    tokio::spawn(loop_task(name, proc, interval, notify));
+}
+
+#[cfg(feature = "async")]
+pub fn loop_task<P, F>(
+    name: &'static str,
+    proc: P,
+    interval: u64,
+    notify: Arc<tokio::sync::Notify>,
+) -> impl Future<Output = ()> + Send + 'static
+where
+    P: Fn() -> F + Send + 'static,
+    F: Future<Output = ()> + Send + 'static,
+{
+    async move {
         let task = async move {
             loop {
                 proc().await;
@@ -95,7 +109,7 @@ pub fn spawn_loop_task<P, F>(
                 log::debug!("loop task {} notified and exited", name);
             }
         }
-    });
+    }
 }
 
 #[cfg(feature = "sink")]
