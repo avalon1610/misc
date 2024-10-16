@@ -89,18 +89,21 @@ impl TracingLogger {
             format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]"),
         );
         let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| filter.into());
-        let stdout_layer = fmt::layer()
-            .with_timer(timer.clone())
-            .with_span_events(FmtSpan::NEW);
+        
         let file_layer = fmt::layer()
-            .with_timer(timer)
+            .compact()
             .with_writer(non_blocking)
             .with_ansi(false)
+            .with_timer(timer.clone())
+            .with_span_events(FmtSpan::NEW);
+        let stdout_layer = fmt::layer()
+            .compact()
+            .with_timer(timer)
             .with_span_events(FmtSpan::NEW);
 
         (
-            stdout_layer
-                .and_then(file_layer)
+            file_layer
+                .and_then(stdout_layer)
                 .with_filter(filter)
                 .boxed(),
             guard,
