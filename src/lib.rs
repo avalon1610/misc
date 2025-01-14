@@ -17,6 +17,8 @@ pub mod nom;
 pub mod panic;
 #[cfg(feature = "signals")]
 pub mod signals;
+#[cfg(feature = "temp")]
+pub mod temp;
 
 #[macro_export]
 macro_rules! async_block {
@@ -79,35 +81,32 @@ pub fn spawn_loop_task<P, F>(
 }
 
 #[cfg(feature = "async")]
-pub fn loop_task<P, F>(
+pub async fn loop_task<P, F>(
     name: &'static str,
     proc: P,
     interval: u64,
     notify: Arc<tokio::sync::Notify>,
-) -> impl Future<Output = ()> + Send + 'static
-where
+) where
     P: Fn() -> F + Send + 'static,
     F: Future<Output = ()> + Send + 'static,
 {
-    async move {
-        let task = async move {
-            loop {
-                proc().await;
-                if interval > 0 {
-                    tokio::time::sleep(std::time::Duration::from_secs(interval)).await;
-                }
-
-                if interval == 0 {
-                    break;
-                }
+    let task = async move {
+        loop {
+            proc().await;
+            if interval > 0 {
+                tokio::time::sleep(std::time::Duration::from_secs(interval)).await;
             }
-        };
 
-        tokio::select! {
-            _ = task => {}
-            _ = notify.notified() => {
-                log::debug!("loop task {} notified and exited", name);
+            if interval == 0 {
+                break;
             }
+        }
+    };
+
+    tokio::select! {
+        _ = task => {}
+        _ = notify.notified() => {
+            log::debug!("loop task {} notified and exited", name);
         }
     }
 }
