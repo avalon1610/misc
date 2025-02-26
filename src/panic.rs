@@ -41,6 +41,10 @@ impl Mail {
         }
     }
 
+    fn add_target(&mut self, target: impl Into<String>) {
+        self.targets.push(target.into());
+    }
+
     fn send_mail(&self, subject: impl Into<String>, body: impl Into<String>) -> Result<()> {
         let subject = subject.into();
         let body = body.into();
@@ -61,6 +65,16 @@ impl Mail {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test_send_mail() {
+        let mut mail = super::Mail::new();
+        mail.add_target("wu_bin3@dahuatech.com");
+        mail.send_mail("test", "test").unwrap();
     }
 }
 
@@ -131,7 +145,7 @@ impl PanicHandler {
             self.mail = Some(Mail::new());
         }
 
-        self.mail.as_mut().unwrap().targets.push(target.into());
+        self.mail.as_mut().unwrap().add_target(target);
         self
     }
 
