@@ -129,10 +129,14 @@ where
     T: Serialize + DeserializeOwned,
 {
     fn serialize(v: &T) -> Result<Vec<u8>> {
-        Ok(bincode::serialize(v)?)
+        Ok(bincode::serde::encode_to_vec(
+            v,
+            bincode::config::standard(),
+        )?)
     }
 
     fn deserialize(cfg: Vec<u8>) -> Result<T> {
-        Ok(bincode::deserialize(&cfg)?)
+        let (r, _) = bincode::serde::decode_from_slice(&cfg, bincode::config::standard())?;
+        Ok(r)
     }
 }

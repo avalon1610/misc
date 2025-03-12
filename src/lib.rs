@@ -19,6 +19,8 @@ pub mod panic;
 pub mod signals;
 #[cfg(feature = "temp")]
 pub mod temp;
+#[cfg(feature = "cache")]
+pub mod cache;
 
 #[macro_export]
 macro_rules! async_block {
