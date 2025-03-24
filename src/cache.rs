@@ -1,4 +1,9 @@
-use std::{collections::HashMap, hash::Hash, time::Instant};
+use std::{
+    collections::HashMap,
+    hash::Hash,
+    sync::atomic::{AtomicU64, Ordering},
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 pub struct Cache<K, V> {
     inner: HashMap<K, Entry<V>>,
@@ -6,7 +11,7 @@ pub struct Cache<K, V> {
 }
 
 struct Entry<V> {
-    timestamp: Instant,
+    timestamp: AtomicU64,
     value: V,
 }
 
@@ -21,16 +26,16 @@ where
         }
     }
 
-    pub fn get(&mut self, key: &K) -> Option<&V> {
-        self.inner.get_mut(key).map(|e| {
-            e.timestamp = Instant::now();
+    pub fn get(&self, key: &K) -> Option<&V> {
+        self.inner.get(key).map(|e| {
+            e.timestamp.store(Self::now(), Ordering::SeqCst);
             &e.value
         })
     }
 
     pub fn shrink(&mut self) {
         self.inner.retain(|_, e| {
-            if e.timestamp.elapsed().as_secs() < self.timeout {
+            if Self::now().saturating_sub(e.timestamp.load(Ordering::SeqCst)) < self.timeout {
                 true
             } else {
                 false
@@ -39,14 +44,20 @@ where
     }
 
     pub fn set(&mut self, key: K, value: V) {
-        let now = Instant::now();
         self.shrink();
 
         let entry = Entry {
-            timestamp: now,
+            timestamp: AtomicU64::new(Self::now()),
             value,
         };
 
         self.inner.insert(key, entry);
+    }
+
+    fn now() -> u64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or(Duration::from_secs(0))
+            .as_secs()
     }
 }
