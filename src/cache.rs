@@ -21,12 +21,14 @@ where
         }
     }
 
-    pub fn get(&self, key: &K) -> Option<&V> {
-        self.inner.get(key).map(|e| &e.value)
+    pub fn get(&mut self, key: &K) -> Option<&V> {
+        self.inner.get_mut(key).map(|e| {
+            e.timestamp = Instant::now();
+            &e.value
+        })
     }
 
-    pub fn set(&mut self, key: K, value: V) {
-        let now = Instant::now();
+    pub fn shrink(&mut self) {
         self.inner.retain(|_, e| {
             if e.timestamp.elapsed().as_secs() < self.timeout {
                 true
@@ -34,6 +36,11 @@ where
                 false
             }
         });
+    }
+
+    pub fn set(&mut self, key: K, value: V) {
+        let now = Instant::now();
+        self.shrink();
 
         let entry = Entry {
             timestamp: now,
