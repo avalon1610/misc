@@ -15,9 +15,11 @@ use tracing_subscriber::{
 #[cfg(feature = "tracing_logger")]
 pub struct TracingLogger {
     layers: Box<dyn Layer<Registry> + Send + Sync>,
-    #[allow(dead_code)]
-    console: bool,
-    guard: non_blocking::WorkerGuard,
+    guard: TracingLoggerGuard,
+}
+
+pub struct TracingLoggerGuard {
+    _non_blocking_guard: non_blocking::WorkerGuard,
 }
 
 #[cfg(feature = "tracing_logger")]
@@ -33,20 +35,25 @@ impl TracingLogger {
             .filename_prefix(pkg_name)
             .filename_suffix("log")
             .build(log_dir)?;
-        let filter = format!("{}={},{}", pkg_name.replace('-', "_"), verbose, default);
+        let app_name = pkg_name.replace('-', "_");
+        let filter = format!("{}={},{}", app_name, verbose, default);
         let (layers, guard) = Self::default_layers(file_appender, filter);
 
         Ok(Self {
             layers,
-            guard,
-            console: false,
+            guard: TracingLoggerGuard {
+                _non_blocking_guard: guard,
+            },
         })
     }
 
     #[cfg(feature = "console")]
-    pub fn enable_tokio_console(mut self) -> Self {
-        self.console = true;
-        self
+    pub fn enable_tokio_console(self) -> Self {
+        self.add_layer(
+            console_subscriber::Builder::default()
+                .server_addr((std::net::Ipv4Addr::UNSPECIFIED, 6669))
+                .spawn(),
+        )
     }
 
     pub fn add_layer<L>(mut self, layer: L) -> Self
@@ -57,22 +64,8 @@ impl TracingLogger {
         self
     }
 
-    pub fn init(self) -> Result<non_blocking::WorkerGuard> {
-        let layered = registry().with(self.layers);
-
-        #[cfg(feature = "console")]
-        if self.console {
-            layered
-                .with(
-                    console_subscriber::Builder::default()
-                        .server_addr((std::net::Ipv4Addr::UNSPECIFIED, 6669))
-                        .spawn(),
-                )
-                .init();
-            return Ok(self.guard);
-        }
-
-        layered.init();
+    pub fn init(self) -> Result<TracingLoggerGuard> {
+        registry().with(self.layers).init();
         Ok(self.guard)
     }
 
@@ -89,7 +82,7 @@ impl TracingLogger {
             format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]"),
         );
         let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| filter.into());
-        
+
         let file_layer = fmt::layer()
             .compact()
             .with_writer(non_blocking)

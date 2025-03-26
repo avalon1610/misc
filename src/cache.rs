@@ -35,11 +35,7 @@ where
 
     pub fn shrink(&mut self) {
         self.inner.retain(|_, e| {
-            if Self::now().saturating_sub(e.timestamp.load(Ordering::SeqCst)) < self.timeout {
-                true
-            } else {
-                false
-            }
+            Self::now().saturating_sub(e.timestamp.load(Ordering::SeqCst)) < self.timeout
         });
     }
 
