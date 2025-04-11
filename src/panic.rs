@@ -102,15 +102,20 @@ impl PanicHandler {
     pub fn setup(self) {
         set_hook(Box::new(move |panic_info| {
             let bt = Backtrace::new();
+            let payload = if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+                format!("{s:?}")
+            } else if let Some(s) = panic_info.payload().downcast_ref::<String>() {
+                format!("{s:?}")
+            } else {
+                format!("non-string panic occurred")
+            };
+
             let dump = format!(
-                "{:?}\nthread '{}' panicked at '{}' {}",
+                "{:?}\nthread '{}' panicked {}: {}",
                 bt,
                 std::thread::current().name().unwrap_or("<unnamed>"),
-                panic_info
-                    .payload()
-                    .downcast_ref::<&str>()
-                    .unwrap_or(&"<unknown>"),
-                panic_info.location().unwrap_or(Location::caller())
+                panic_info.location().unwrap_or(Location::caller()),
+                payload
             );
 
             let dump_file = format!(
